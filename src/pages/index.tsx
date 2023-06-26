@@ -3,6 +3,8 @@ import { SignIn, SignInButton, useUser } from "@clerk/clerk-react";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
+import { LoadingPage } from "~/components/loading";
+import { NextPage } from "next";
 import { Post } from "@prisma/client";
 import type { RouterOutputs } from "~/utils/api";
 import { api } from "~/utils/api";
@@ -43,7 +45,7 @@ const PostView = (props: PostWithUser) => {
         alt={`@${author.username}'s profile picture`}
         width={56}
         height={56}
-        className="flex h-14 w-14"
+        className="flex h-14 w-14 rounded-full"
       />
       <div className="flex flex-col">
         <div className="flex gap-1  text-slate-300">
@@ -56,12 +58,27 @@ const PostView = (props: PostWithUser) => {
   );
 };
 
-export default function Home() {
-  const { data, isLoading } = api.post.getAll.useQuery();
-  const user = useUser();
-  if (isLoading) return <div>Loading...</div>;
+const Feed: NextPage = () => {
+  const { data, isLoading: postsLoading } = api.post.getAll.useQuery();
 
+  if (postsLoading) {
+    return <LoadingPage />;
+  }
   if (!data) return <div>Something went wrong</div>;
+  return (
+    <div className="flex flex-col">
+      {data?.map((fullPost) => (
+        <PostView {...fullPost} key={fullPost.post.id} />
+      ))}
+    </div>
+  );
+};
+const Home: NextPage = () => {
+  const { isLoaded: userLoaded, isSignedIn } = useUser();
+
+  api.post.getAll.useQuery();
+
+  if (!userLoaded) return <div />;
 
   return (
     <>
@@ -73,22 +90,19 @@ export default function Home() {
       <main className="flex h-screen justify-center">
         <div className="h-full w-full border-x border-slate-400 md:max-w-2xl">
           <div className="flex border-b border-slate-400 p-4">
-            {!user.isSignedIn && (
+            {!isSignedIn && (
               <div className="flex justify-center">
                 <SignInButton />
               </div>
             )}
-            {!!user.isSignedIn && <CreatePostWizard />}
+            {!!isSignedIn && <CreatePostWizard />}
           </div>
-
-          <div className="flex flex-col">
-            {data?.map((fullPost) => (
-              <PostView {...fullPost} key={fullPost.post.id} />
-            ))}
-          </div>
+          <Feed />
           <SignIn path="/sign-in" routing="path" signUpUrl="/sign-up" />
         </div>
       </main>
     </>
   );
-}
+};
+
+export default Home;
