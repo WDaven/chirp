@@ -2,22 +2,29 @@ import { SignIn, SignInButton, useUser } from "@clerk/clerk-react";
 
 import Head from "next/head";
 import Image from "next/image";
-import Link from "next/link";
 import { LoadingPage } from "~/components/loading";
-import { NextPage } from "next";
-import { Post } from "@prisma/client";
 import type { RouterOutputs } from "~/utils/api";
 import { api } from "~/utils/api";
-import { auth } from "@clerk/nextjs";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
+import { useState } from "react";
+import { type NextPage } from "next/types";
 
 dayjs.extend(relativeTime);
 
 const CreatePostWizard = () => {
   const { user } = useUser();
+  const ctx = api.useContext();
+  const { mutate, isLoading: isPosting } = api.post.create.useMutation({
+    onSuccess: () => {
+      setInput("");
+      void ctx.post.getAll.invalidate();
+    },
+  });
+
+  const [input, setInput] = useState("");
   if (!user) return null;
-  console.log(user);
+
   return (
     <div className="flex w-full gap-3">
       <Image
@@ -30,7 +37,12 @@ const CreatePostWizard = () => {
       <input
         placeholder="Type some emojis!"
         className="grow bg-transparent outline-none"
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
       />
+      <button onClick={() => mutate({ content: input })} disabled={isPosting}>
+        Post
+      </button>
     </div>
   );
 };
@@ -52,7 +64,7 @@ const PostView = (props: PostWithUser) => {
           <span>{`@${author.username} `} </span>
           <span>{` · ${dayjs(post.createdAt).fromNow()}`}</span>
         </div>
-        <span className="">{post.content}</span>
+        <span className="text-2xl">{post.content}</span>
       </div>
     </div>
   );
@@ -67,7 +79,7 @@ const Feed: NextPage = () => {
   if (!data) return <div>Something went wrong</div>;
   return (
     <div className="flex flex-col">
-      {data?.map((fullPost) => (
+      {data.map((fullPost) => (
         <PostView {...fullPost} key={fullPost.post.id} />
       ))}
     </div>
