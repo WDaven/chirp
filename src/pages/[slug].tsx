@@ -4,6 +4,7 @@ import Head from "next/head";
 import Image from "next/image";
 import { LoadingPage } from "~/components/loading";
 import { PageLayout } from "~/components/layout";
+import { PostView } from "~/components/postview";
 import { api } from "~/utils/api";
 import { generateSSGHelper } from "~/server/helpers/ssgHelper";
 
@@ -51,6 +52,7 @@ const ProfilePage: NextPage<{ username: string }> = ({ username }) => {
           data.username ?? ""
         }`}</div>
         <div className="w-full border-b border-slate-400" />
+        <ProfileFeed userId={data.id} />
       </PageLayout>
     </>
   );

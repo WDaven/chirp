@@ -1,28 +1,26 @@
-import { SignIn, SignInButton, useUser } from "@clerk/clerk-react";
+import { SignInButton, useUser } from "@clerk/nextjs";
+import { type NextPage } from "next";
 
-import Head from "next/head";
+import { api } from "~/utils/api";
+
 import Image from "next/image";
 import { LoadingPage, LoadingSpinner } from "~/components/loading";
-import type { RouterOutputs } from "~/utils/api";
-import { api } from "~/utils/api";
-import dayjs from "dayjs";
-import relativeTime from "dayjs/plugin/relativeTime";
 import { useState } from "react";
-import { type NextPage } from "next/types";
-import toast from "react-hot-toast";
-import Link from "next/link";
+import { toast } from "react-hot-toast";
 import { PageLayout } from "~/components/layout";
 import { PostView } from "~/components/postview";
 
-dayjs.extend(relativeTime);
-
 const CreatePostWizard = () => {
   const { user } = useUser();
+
+  const [input, setInput] = useState("");
+
   const ctx = api.useContext();
+
   const { mutate, isLoading: isPosting } = api.posts.create.useMutation({
     onSuccess: () => {
       setInput("");
-      void ctx.post.getAll.invalidate();
+      void ctx.posts.getAll.invalidate();
     },
     onError: (e) => {
       const errorMessage = e.data?.zodError?.fieldErrors.content;
@@ -34,7 +32,8 @@ const CreatePostWizard = () => {
     },
   });
 
-  const [input, setInput] = useState("");
+  console.log(user);
+
   if (!user) return null;
 
   return (
@@ -49,6 +48,7 @@ const CreatePostWizard = () => {
       <input
         placeholder="Type some emojis!"
         className="grow bg-transparent outline-none"
+        type="text"
         value={input}
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={(e) => {
@@ -65,7 +65,7 @@ const CreatePostWizard = () => {
         <button onClick={() => mutate({ content: input })}>Post</button>
       )}
       {isPosting && (
-        <div className="flex flex-col justify-center">
+        <div className="flex items-center justify-center">
           <LoadingSpinner size={20} />
         </div>
       )}
@@ -73,13 +73,13 @@ const CreatePostWizard = () => {
   );
 };
 
-const Feed: NextPage = () => {
+const Feed = () => {
   const { data, isLoading: postsLoading } = api.posts.getAll.useQuery();
 
-  if (postsLoading) {
-    return <LoadingPage />;
-  }
+  if (postsLoading) return <LoadingPage />;
+
   if (!data) return <div>Something went wrong</div>;
+
   return (
     <div className="flex flex-col">
       {data.map((fullPost) => (
@@ -88,11 +88,14 @@ const Feed: NextPage = () => {
     </div>
   );
 };
+
 const Home: NextPage = () => {
   const { isLoaded: userLoaded, isSignedIn } = useUser();
 
+  // Start fetching asap
   api.posts.getAll.useQuery();
 
+  // Return empty div if user isn't loaded
   if (!userLoaded) return <div />;
 
   return (
@@ -103,10 +106,10 @@ const Home: NextPage = () => {
             <SignInButton />
           </div>
         )}
-        {!!isSignedIn && <CreatePostWizard />}
+        {isSignedIn && <CreatePostWizard />}
       </div>
+
       <Feed />
-      <SignIn path="/sign-in" routing="path" signUpUrl="/sign-up" />
     </PageLayout>
   );
 };
